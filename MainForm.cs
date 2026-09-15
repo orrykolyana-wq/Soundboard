@@ -458,31 +458,46 @@ namespace Soundboard
             promptForm.FormBorderStyle = FormBorderStyle.FixedDialog;
             promptForm.MinimizeBox = false;
             promptForm.MaximizeBox = false;
-            promptForm.Width = 350;
-            promptForm.Height = 180;
-            promptForm.AutoSize = false;
+            promptForm.AutoSize = true;
+            promptForm.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.Dock = DockStyle.Fill;
+            layout.ColumnCount = 2;
+            layout.RowCount = 3;
+            layout.Padding = new Padding(12);
+
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 44));
+
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             Label promptLabel = new Label();
             promptLabel.Text = "What would you like to name this?";
-            promptLabel.Location = new Point(12, 12);
-            promptLabel.Width = 320;
-            promptLabel.TextAlign = ContentAlignment.MiddleCenter;
+            promptLabel.TextAlign = ContentAlignment.MiddleLeft;
+            promptLabel.Dock = DockStyle.Fill;
+            promptLabel.AutoSize = true;
+            layout.Controls.Add(promptLabel);
+            layout.SetColumnSpan(promptLabel, 2);
 
             TextBox textBox = new TextBox();
             textBox.Text = defaultName;
-            textBox.Location = new Point(12, 40);
+            textBox.Dock = DockStyle.Fill;
             textBox.Width = 260;
+            layout.Controls.Add(textBox);
 
             Button colorSwatchButton = new Button();
             colorSwatchButton.FlatStyle = FlatStyle.Flat;
             colorSwatchButton.FlatAppearance.BorderColor = Color.Black;
             colorSwatchButton.FlatAppearance.BorderSize = 1;
-            colorSwatchButton.Width = 30;
-            colorSwatchButton.Height = 26;
-            colorSwatchButton.Location = new Point(278, 40);
+            colorSwatchButton.Size = new Size(30, 26);
+            colorSwatchButton.Dock = DockStyle.Fill;
+            colorSwatchButton.Anchor = AnchorStyles.None;
 
             GraphicsPath swatchPath = new GraphicsPath();
-            swatchPath.AddEllipse(0, 0, colorSwatchButton.Width, colorSwatchButton.Height);
+            swatchPath.AddEllipse(0, 0, 30, 26);
             colorSwatchButton.Region = new Region(swatchPath);
             colorSwatchButton.BackColor = GetColorForPaletteValue(selectedColorValue.Value);
             colorSwatchButton.CausesValidation = false;
@@ -495,24 +510,30 @@ namespace Soundboard
                 selectedColorValue = newColorValue.Value;
                 colorSwatchButton.BackColor = GetColorForPaletteValue(selectedColorValue.Value);
             };
+            layout.Controls.Add(colorSwatchButton);
 
-            Button okButton = new Button();
-            okButton.Text = "OK";
-            okButton.DialogResult = DialogResult.OK;
-            okButton.Location = new Point(120, 80);
-            okButton.Width = 90;
+            FlowLayoutPanel buttonPanel = new FlowLayoutPanel();
+            buttonPanel.Dock = DockStyle.Fill;
+            buttonPanel.FlowDirection = FlowDirection.RightToLeft;
+            buttonPanel.AutoSize = true;
+            buttonPanel.Padding = new Padding(0, 8, 0, 0);
 
             Button cancelButton = new Button();
             cancelButton.Text = "Cancel";
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(220, 80);
-            cancelButton.Width = 90;
+            cancelButton.Size = new Size(90, 30);
 
-            promptForm.Controls.Add(promptLabel);
-            promptForm.Controls.Add(textBox);
-            promptForm.Controls.Add(colorSwatchButton);
-            promptForm.Controls.Add(okButton);
-            promptForm.Controls.Add(cancelButton);
+            Button okButton = new Button();
+            okButton.Text = "OK";
+            okButton.DialogResult = DialogResult.OK;
+            okButton.Size = new Size(90, 30);
+
+            buttonPanel.Controls.Add(cancelButton);
+            buttonPanel.Controls.Add(okButton);
+            layout.Controls.Add(buttonPanel);
+            layout.SetColumnSpan(buttonPanel, 2);
+
+            promptForm.Controls.Add(layout);
             promptForm.AcceptButton = okButton;
             promptForm.CancelButton = cancelButton;
 
@@ -533,8 +554,8 @@ namespace Soundboard
             paletteForm.FormBorderStyle = FormBorderStyle.FixedDialog;
             paletteForm.MinimizeBox = false;
             paletteForm.MaximizeBox = false;
-            paletteForm.Width = 360;
-            paletteForm.Height = 260;
+            paletteForm.AutoSize = true;
+            paletteForm.AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
             TableLayoutPanel paletteGrid = new TableLayoutPanel();
             paletteGrid.Dock = DockStyle.Fill;
@@ -623,34 +644,53 @@ namespace Soundboard
             promptForm.Text = title;
             promptForm.StartPosition = FormStartPosition.CenterParent;
             promptForm.FormBorderStyle = FormBorderStyle.FixedDialog;
-            promptForm.Width = 320;
-            promptForm.Height = 150;
+            promptForm.MinimizeBox = false;
+            promptForm.MaximizeBox = false;
+            promptForm.AutoSize = true;
+            promptForm.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.Dock = DockStyle.Fill;
+            layout.ColumnCount = 1;
+            layout.RowCount = 3;
+            layout.Padding = new Padding(12);
+
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             Label promptLabel = new Label();
             promptLabel.Text = promptText;
-            promptLabel.Location = new Point(12, 16);
-            promptLabel.Width = 280;
+            promptLabel.AutoSize = true;
+            promptLabel.Dock = DockStyle.Fill;
+            layout.Controls.Add(promptLabel);
 
             TextBox textBox = new TextBox();
-            textBox.Location = new Point(12, 42);
             textBox.Width = 280;
+            textBox.Dock = DockStyle.Fill;
+            layout.Controls.Add(textBox);
 
-            Button okButton = new Button();
-            okButton.Text = "OK";
-            okButton.DialogResult = DialogResult.OK;
-            okButton.Location = new Point(120, 80);
-            okButton.Width = 80;
+            FlowLayoutPanel buttonPanel = new FlowLayoutPanel();
+            buttonPanel.Dock = DockStyle.Fill;
+            buttonPanel.FlowDirection = FlowDirection.RightToLeft;
+            buttonPanel.AutoSize = true;
+            buttonPanel.Padding = new Padding(0, 8, 0, 0);
 
             Button cancelButton = new Button();
             cancelButton.Text = "Cancel";
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(210, 80);
-            cancelButton.Width = 80;
+            cancelButton.Size = new Size(80, 30);
 
-            promptForm.Controls.Add(promptLabel);
-            promptForm.Controls.Add(textBox);
-            promptForm.Controls.Add(okButton);
-            promptForm.Controls.Add(cancelButton);
+            Button okButton = new Button();
+            okButton.Text = "OK";
+            okButton.DialogResult = DialogResult.OK;
+            okButton.Size = new Size(80, 30);
+
+            buttonPanel.Controls.Add(cancelButton);
+            buttonPanel.Controls.Add(okButton);
+            layout.Controls.Add(buttonPanel);
+
+            promptForm.Controls.Add(layout);
             promptForm.AcceptButton = okButton;
             promptForm.CancelButton = cancelButton;
 
