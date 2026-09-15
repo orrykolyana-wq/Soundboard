@@ -458,8 +458,7 @@ namespace Soundboard
             promptForm.FormBorderStyle = FormBorderStyle.FixedDialog;
             promptForm.MinimizeBox = false;
             promptForm.MaximizeBox = false;
-            promptForm.AutoSize = true;
-            promptForm.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            promptForm.ClientSize = new Size(360, 150);
 
             TableLayoutPanel layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
@@ -472,7 +471,7 @@ namespace Soundboard
 
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             Label promptLabel = new Label();
             promptLabel.Text = "What would you like to name this?";
@@ -485,7 +484,6 @@ namespace Soundboard
             TextBox textBox = new TextBox();
             textBox.Text = defaultName;
             textBox.Dock = DockStyle.Fill;
-            textBox.Width = 260;
             layout.Controls.Add(textBox);
 
             Button colorSwatchButton = new Button();
@@ -515,7 +513,7 @@ namespace Soundboard
             FlowLayoutPanel buttonPanel = new FlowLayoutPanel();
             buttonPanel.Dock = DockStyle.Fill;
             buttonPanel.FlowDirection = FlowDirection.RightToLeft;
-            buttonPanel.AutoSize = true;
+            buttonPanel.AutoSize = false;
             buttonPanel.Padding = new Padding(0, 8, 0, 0);
 
             Button cancelButton = new Button();
@@ -554,8 +552,7 @@ namespace Soundboard
             paletteForm.FormBorderStyle = FormBorderStyle.FixedDialog;
             paletteForm.MinimizeBox = false;
             paletteForm.MaximizeBox = false;
-            paletteForm.AutoSize = true;
-            paletteForm.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            paletteForm.ClientSize = new Size(300, 260);
 
             TableLayoutPanel paletteGrid = new TableLayoutPanel();
             paletteGrid.Dock = DockStyle.Fill;
@@ -646,8 +643,7 @@ namespace Soundboard
             promptForm.FormBorderStyle = FormBorderStyle.FixedDialog;
             promptForm.MinimizeBox = false;
             promptForm.MaximizeBox = false;
-            promptForm.AutoSize = true;
-            promptForm.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            promptForm.ClientSize = new Size(320, 120);
 
             TableLayoutPanel layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
@@ -657,7 +653,7 @@ namespace Soundboard
 
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             Label promptLabel = new Label();
             promptLabel.Text = promptText;
@@ -666,14 +662,13 @@ namespace Soundboard
             layout.Controls.Add(promptLabel);
 
             TextBox textBox = new TextBox();
-            textBox.Width = 280;
             textBox.Dock = DockStyle.Fill;
             layout.Controls.Add(textBox);
 
             FlowLayoutPanel buttonPanel = new FlowLayoutPanel();
             buttonPanel.Dock = DockStyle.Fill;
             buttonPanel.FlowDirection = FlowDirection.RightToLeft;
-            buttonPanel.AutoSize = true;
+            buttonPanel.AutoSize = false;
             buttonPanel.Padding = new Padding(0, 8, 0, 0);
 
             Button cancelButton = new Button();
