@@ -459,17 +459,18 @@ namespace Soundboard
             promptForm.MinimizeBox = false;
             promptForm.MaximizeBox = false;
             promptForm.Width = 350;
-            promptForm.Height = 220;
+            promptForm.Height = 180;
+            promptForm.AutoSize = false;
 
             Label promptLabel = new Label();
             promptLabel.Text = "What would you like to name this?";
-            promptLabel.Location = new Point(12, 16);
+            promptLabel.Location = new Point(12, 12);
             promptLabel.Width = 320;
             promptLabel.TextAlign = ContentAlignment.MiddleCenter;
 
             TextBox textBox = new TextBox();
             textBox.Text = defaultName;
-            textBox.Location = new Point(12, 48);
+            textBox.Location = new Point(12, 40);
             textBox.Width = 260;
 
             Button colorSwatchButton = new Button();
@@ -477,8 +478,8 @@ namespace Soundboard
             colorSwatchButton.FlatAppearance.BorderColor = Color.Black;
             colorSwatchButton.FlatAppearance.BorderSize = 1;
             colorSwatchButton.Width = 30;
-            colorSwatchButton.Height = 30;
-            colorSwatchButton.Location = new Point(280, 48);
+            colorSwatchButton.Height = 26;
+            colorSwatchButton.Location = new Point(278, 40);
 
             GraphicsPath swatchPath = new GraphicsPath();
             swatchPath.AddEllipse(0, 0, colorSwatchButton.Width, colorSwatchButton.Height);
@@ -498,13 +499,13 @@ namespace Soundboard
             Button okButton = new Button();
             okButton.Text = "OK";
             okButton.DialogResult = DialogResult.OK;
-            okButton.Location = new Point(120, 140);
+            okButton.Location = new Point(120, 80);
             okButton.Width = 90;
 
             Button cancelButton = new Button();
             cancelButton.Text = "Cancel";
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(220, 140);
+            cancelButton.Location = new Point(220, 80);
             cancelButton.Width = 90;
 
             promptForm.Controls.Add(promptLabel);
