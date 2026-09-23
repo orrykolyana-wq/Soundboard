@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="32" fill="#1a1a2e"/>
+  <!-- 8x8 grid of pads -->
+  <g transform="translate(28, 28)">
+    <!-- Row 0 -->
+    <rect x="0" y="0" width="22" height="22" rx="3" fill="#ff4646" opacity="0.9"/>
+    <rect x="26" y="0" width="22" height="22" rx="3" fill="#ff7846" opacity="0.9"/>
+    <rect x="52" y="0" width="22" height="22" rx="3" fill="#ffb446" opacity="0.9"/>
+    <rect x="78" y="0" width="22" height="22" rx="3" fill="#e6dc5a" opacity="0.9"/>
+    <rect x="104" y="0" width="22" height="22" rx="3" fill="#a0e65a" opacity="0.9"/>
+    <rect x="130" y="0" width="22" height="22" rx="3" fill="#5fdc91" opacity="0.9"/>
+    <rect x="156" y="0" width="22" height="22" rx="3" fill="#5acdc8" opacity="0.9"/>
+    <rect x="182" y="0" width="22" height="22" rx="3" fill="#5a96dc" opacity="0.9"/>
+    <!-- Row 1 -->
+    <rect x="0" y="26" width="22" height="22" rx="3" fill="#786ef0" opacity="0.9"/>
+    <rect x="26" y="26" width="22" height="22" rx="3" fill="#b45adc" opacity="0.9"/>
+    <rect x="52" y="26" width="22" height="22" rx="3" fill="#eb6eb4" opacity="0.9"/>
+    <rect x="78" y="26" width="22" height="22" rx="3" fill="#ff9696" opacity="0.9"/>
+    <rect x="104" y="26" width="22" height="22" rx="3" fill="#78f0e6" opacity="0.9"/>
+    <rect x="130" y="26" width="22" height="22" rx="3" fill="#fad278" opacity="0.9"/>
+    <rect x="156" y="26" width="22" height="22" rx="3" fill="#d2f0fa" opacity="0.9"/>
+    <rect x="182" y="26" width="22" height="22" rx="3" fill="#ffffff" opacity="0.9"/>
+    <!-- Remaining rows: darker pads to show the grid -->
+    <rect x="0" y="52" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="104" y="52" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="0" y="78" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="104" y="78" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="0" y="104" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="104" y="104" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="0" y="130" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="104" y="130" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="0" y="156" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="104" y="156" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="0" y="182" width="100" height="22" rx="3" fill="#2a2a4e"/>
+    <rect x="104" y="182" width="100" height="22" rx="3" fill="#2a2a4e"/>
+  </g>
+</svg>
