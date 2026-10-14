@@ -25,6 +25,7 @@ namespace LaunchpadLightTest
         private IntPtr midiInHandle = IntPtr.Zero;
         private GCHandle midiInCallbackHandle;
         private bool midiConnected = false;
+        private bool midiInputOpen = false;
         private const uint MIM_DATA = 0x3C3;
 
 
@@ -273,7 +274,7 @@ namespace LaunchpadLightTest
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
             public string productName;
 
-            public ushort support;
+            public uint support;
         }
 
 
@@ -1389,21 +1390,14 @@ private void FindMidiDevices()
             selectedMidiDeviceId =
                 device.Id;
 
-            if (OpenMidiInput(device.Id, device.Name))
-            {
-                midiConnected =
-                    true;
-            }
-            else
-            {
-                midiConnected =
-                    false;
+            // Input is best-effort: if the Launchpad input channel can't be opened,
+            // stay connected on the out channel (lights still work) and warn that
+            // physical pads won't respond.
+            midiInputOpen =
+                OpenMidiInput(device.Id, device.Name);
 
-                UpdateConnectionToggleAppearance();
-
-                return;
-            }
-
+            midiConnected =
+                true;
 
             UpdateConnectionToggleAppearance();
 
@@ -1415,8 +1409,17 @@ private void FindMidiDevices()
             ShowAllPadsDimWhite();
             ApplyProfileVisualState();
 
-            statusLabel.Text =
-                $"Connected: {device.Name}. Press ACTIVATE to apply saved pad colours.";
+            if (midiInputOpen)
+            {
+                statusLabel.Text =
+                    $"Connected: {device.Name}. Press ACTIVATE to apply saved pad colours.";
+            }
+            else
+            {
+                statusLabel.Text =
+                    $"Connected: {device.Name} (out only — no Launchpad input detected; " +
+                    "physical pads won't respond). Press ACTIVATE to apply saved pad colours.";
+            }
         }
 
 
@@ -1484,22 +1487,30 @@ private void FindMidiDevices()
             TurnEverythingOff();
 
 
-            midiInStop(
-                midiInHandle);
-
-            midiInReset(
-                midiInHandle);
-
-            midiInClose(
-                midiInHandle);
-
-            midiInHandle =
-                IntPtr.Zero;
-
-            if (midiInCallbackHandle.IsAllocated)
+            // The input channel only exists if it opened successfully; an out-only
+            // connection must not stop/reset/close a handle that was never opened.
+            if (midiInHandle != IntPtr.Zero)
             {
-                midiInCallbackHandle.Free();
+                midiInStop(
+                    midiInHandle);
+
+                midiInReset(
+                    midiInHandle);
+
+                midiInClose(
+                    midiInHandle);
+
+                midiInHandle =
+                    IntPtr.Zero;
+
+                if (midiInCallbackHandle.IsAllocated)
+                {
+                    midiInCallbackHandle.Free();
+                }
             }
+
+            midiInputOpen =
+                false;
 
 
             midiOutReset(
@@ -2383,7 +2394,7 @@ private void FindMidiDevices()
                     deviceId,
                     HandleMidiInCallback,
                     GCHandle.ToIntPtr(midiInCallbackHandle),
-                    0x00030000);
+                    0x00090000);   // CALLBACK_FUNCTION: call HandleMidiInCallback directly
 
             if (result != 0)
             {
