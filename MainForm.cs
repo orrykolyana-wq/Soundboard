@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -24,6 +23,7 @@ namespace Soundboard
         private IntPtr midiHandle = IntPtr.Zero;
         private IntPtr midiInHandle = IntPtr.Zero;
         private GCHandle midiInCallbackHandle;
+        private NativeMethods.MidiInProc? midiInCallback;
         private bool midiConnected = false;
         private bool midiInputOpen = false;
 
@@ -840,6 +840,17 @@ namespace Soundboard
 
         private void AssignSoundButton_Click(object? sender, EventArgs e)
         {
+            // Re-clicking Assign Sound while a pad assignment is pending cancels
+            // it; there was previously no way to back out without assigning.
+            if (!string.IsNullOrWhiteSpace(pendingSoundFilePath))
+            {
+                pendingSoundFilePath = null;
+                pendingDisplayName = null;
+                pendingLightColorValue = null;
+                statusLabel.Text = "Pending sound assignment cancelled.";
+                return;
+            }
+
             using OpenFileDialog dialog = new OpenFileDialog();
             dialog.Filter = "WAV files (*.wav)|*.wav|All files (*.*)|*.*";
             dialog.Title = "Choose a sound for the next pad you click";
@@ -1072,13 +1083,9 @@ namespace Soundboard
 
         private static Color GetColorForPaletteValue(byte value)
         {
-            (byte Value, Color Color) closest = PadColorPalette[0];
-            foreach ((byte paletteValue, Color paletteColor) in PadColorPalette)
-            {
-                if (Math.Abs(paletteValue - value) < Math.Abs(closest.Value - value))
-                    closest = (paletteValue, paletteColor);
-            }
-            return closest.Color;
+            // The table covers the full 0–127 hardware range, so this is a
+            // direct index; the clamp only defends stray out-of-range bytes.
+            return PadColorPalette[Math.Min(value, (byte)(PadColorPalette.Length - 1))].Color;
         }
 
         private static Color GetReadableTextColor(Color background)
@@ -1231,10 +1238,14 @@ namespace Soundboard
         {
             midiInCallbackHandle = GCHandle.Alloc(this);
 
+            // Keep an explicit delegate reference so the GC cannot collect the
+            // callback the P/Invoke marshaller is invoking while input is open.
+            midiInCallback = HandleMidiInCallback;
+
             uint result = NativeMethods.midiInOpen(
                 out midiInHandle,
                 deviceId,
-                HandleMidiInCallback,
+                midiInCallback!,
                 GCHandle.ToIntPtr(midiInCallbackHandle),
                 0x00090000);   // CALLBACK_FUNCTION: call HandleMidiInCallback directly
 
@@ -1383,16 +1394,16 @@ namespace Soundboard
 
         private int GetPadIndexFromMidiNote(byte note)
         {
-            for (int row = 0; row < 8; row++)
-            {
-                for (int column = 0; column < 8; column++)
-                {
-                    byte expectedNote = (byte)(81 + column - (row * 10));
-                    if (expectedNote == note)
-                        return (row * 8) + column;
-                }
-            }
-            return -1;
+            // Inverse of the MK2 session mapping documented at SendPad:
+            // note = 81 + column - row*10  →  column = (note - 81) mod 10.
+            // Returns -1 for notes outside the 8x8 grid (e.g. transport row 91-93).
+            int column = note - 81;
+            column = (column % 10 + 10) % 10;
+            int row = (81 + column - note) / 10;
+
+            return column >= 0 && column <= 7 && row >= 0 && row <= 7
+                ? (row * 8) + column
+                : -1;
         }
 
         // ============================================================
@@ -1418,6 +1429,9 @@ namespace Soundboard
             {
                 // Ignore repeat presses for a sound that is already playing.
                 // This prevents rapid pad presses from building a playback queue.
+                // Suppression is deliberately keyed on the file path: two pads
+                // assigned the SAME sound do not overlap — the second press is
+                // a no-op until the first finishes (or Stop All resets things).
                 if (activeSoundPaths.Contains(soundFilePath))
                     return;
 
@@ -1427,15 +1441,14 @@ namespace Soundboard
 
             // Playback runs off the UI/MIDI callback thread, so the Stop button
             // remains responsive even when pads are pressed rapidly.
-            _ = Task.Run(() => PlayPadSoundWorker(soundFilePath, generation));
+            _ = Task.Run(() => PlayPadSoundCoreAsync(soundFilePath, generation));
         }
 
-        private void PlayPadSoundWorker(string soundFilePath, int generation)
+        private async Task PlayPadSoundCoreAsync(string soundFilePath, int generation)
         {
             AudioFileReader? reader = null;
             IWavePlayer? player = null;
             MMDevice? selectedOutputDevice = null;
-            using ManualResetEventSlim playbackFinished = new(false);
 
             try
             {
@@ -1447,9 +1460,9 @@ namespace Soundboard
                     using MMDeviceEnumerator enumerator = new MMDeviceEnumerator();
                     foreach (MMDevice device in enumerator.EnumerateAudioEndPoints(
                         DataFlow.Render,
-                        DeviceState.All))
+                        DeviceState.Active))
                     {
-                        if (device.FriendlyName == outputName)
+                        if (string.Equals(device.FriendlyName, outputName, StringComparison.OrdinalIgnoreCase))
                         {
                             selectedOutputDevice = device;
                             break;
@@ -1471,7 +1484,8 @@ namespace Soundboard
                     player = new WaveOutEvent();
                 }
 
-                player.PlaybackStopped += (_, _) => playbackFinished.Set();
+                TaskCompletionSource playbackStopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                player.PlaybackStopped += (_, _) => playbackStopped.TrySetResult();
                 player.Init(reader);
 
                 lock (activeAudioPlayersLock)
@@ -1485,7 +1499,15 @@ namespace Soundboard
                 }
 
                 player.Play();
-                playbackFinished.Wait();
+
+                // No pool thread is held while playing. The length-derived cap is
+                // a safety net: if PlaybackStopped never fires (device pulled
+                // mid-playback), cleanup still runs instead of blocking forever.
+                await playbackStopped.Task.WaitAsync(TimeSpan.FromSeconds(reader.TotalTime.TotalSeconds + 30));
+            }
+            catch (TimeoutException)
+            {
+                SetStatusText($"Playback did not report completion: {soundFilePath}");
             }
             catch (Exception ex)
             {
