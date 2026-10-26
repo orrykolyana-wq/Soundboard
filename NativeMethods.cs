@@ -32,7 +32,7 @@ namespace Soundboard
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
             public string ProductName;
 
-            public ushort Support;
+            public uint Support;
         }
 
         [DllImport("winmm.dll", EntryPoint = "midiOutGetNumDevs")]

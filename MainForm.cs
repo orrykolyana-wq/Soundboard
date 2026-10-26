@@ -25,6 +25,7 @@ namespace Soundboard
         private IntPtr midiInHandle = IntPtr.Zero;
         private GCHandle midiInCallbackHandle;
         private bool midiConnected = false;
+        private bool midiInputOpen = false;
 
         private ComboBox midiDevices = null!;
         private Button connectButton = null!;
@@ -363,16 +364,14 @@ namespace Soundboard
             midiHandle = newHandle;
             selectedMidiDeviceId = device.Id;
 
-            if (OpenMidiInput(device.Id, device.Name))
-            {
-                midiConnected = true;
-            }
-            else
-            {
-                midiConnected = false;
-                UpdateConnectionToggleAppearance();
-                return;
-            }
+            // Input is best-effort: if the Launchpad input channel can't be opened,
+            // stay connected on the out channel (lights still work) and warn that
+            // physical pads won't respond.
+            midiInputOpen =
+                OpenMidiInput(device.Id, device.Name);
+
+            midiConnected =
+                true;
 
             UpdateConnectionToggleAppearance();
 
@@ -383,8 +382,17 @@ namespace Soundboard
             ShowAllPadsDimWhite();
             ApplyProfileVisualState();
 
-            statusLabel.Text =
-                $"Connected: {device.Name}. Press ACTIVATE to apply saved pad colours.";
+            if (midiInputOpen)
+            {
+                statusLabel.Text =
+                    $"Connected: {device.Name}. Press ACTIVATE to apply saved pad colours.";
+            }
+            else
+            {
+                statusLabel.Text =
+                    $"Connected: {device.Name} (out only — no Launchpad input detected; " +
+                    "physical pads won't respond). Press ACTIVATE to apply saved pad colours.";
+            }
         }
 
         private void ActivateLayoutButton_Click(object? sender, EventArgs e)
@@ -443,13 +451,20 @@ namespace Soundboard
 
             TurnEverythingOff();
 
-            NativeMethods.midiInStop(midiInHandle);
-            NativeMethods.midiInReset(midiInHandle);
-            NativeMethods.midiInClose(midiInHandle);
-            midiInHandle = IntPtr.Zero;
+            // The input channel only exists if it opened successfully; an out-only
+            // connection must not stop/reset/close a handle that was never opened.
+            if (midiInHandle != IntPtr.Zero)
+            {
+                NativeMethods.midiInStop(midiInHandle);
+                NativeMethods.midiInReset(midiInHandle);
+                NativeMethods.midiInClose(midiInHandle);
+                midiInHandle = IntPtr.Zero;
 
-            if (midiInCallbackHandle.IsAllocated)
-                midiInCallbackHandle.Free();
+                if (midiInCallbackHandle.IsAllocated)
+                    midiInCallbackHandle.Free();
+            }
+
+            midiInputOpen = false;
 
             NativeMethods.midiOutReset(midiHandle);
             NativeMethods.midiOutClose(midiHandle);
@@ -1221,7 +1236,7 @@ namespace Soundboard
                 deviceId,
                 HandleMidiInCallback,
                 GCHandle.ToIntPtr(midiInCallbackHandle),
-                0x00030000);
+                0x00090000);   // CALLBACK_FUNCTION: call HandleMidiInCallback directly
 
             if (result != 0)
             {
