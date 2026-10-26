@@ -388,22 +388,6 @@ namespace Soundboard
                 padGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 12.5f));
             boardLayout.Controls.Add(padGrid, 0, 1);
 
-            // Keep the hidden palette selector as an internal default-colour source.
-            paletteSelector = new ComboBox { Visible = false, DropDownStyle = ComboBoxStyle.DropDownList };
-            for (int value = 0; value <= 127; value++)
-                paletteSelector.Items.Add(value.ToString());
-            paletteSelector.SelectedIndex = Random.Shared.Next(34, 38);
-            Controls.Add(paletteSelector);
-
-            allOffButton = new Button { Text = "ALL OFF", Visible = false };
-            allOnButton = new Button { Text = "ALL ON", Visible = false };
-            rainbow1Button = new Button { Text = "\U0001F308 1", Visible = false };
-            rainbow2Button = new Button { Text = "\U0001F308 2", Visible = false };
-            rainbow1Button.Click += Rainbow1Button_Click;
-            rainbow2Button.Click += Rainbow2Button_Click;
-            allOffButton.Click += AllOffButton_Click;
-            allOnButton.Click += AllOnButton_Click;
-
             PopulateAudioOutputDevices();
             ApplyActiveAudioMode();
 

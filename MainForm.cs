@@ -30,7 +30,6 @@ namespace Soundboard
         private ComboBox midiDevices = null!;
         private Button connectButton = null!;
 
-        private ComboBox paletteSelector = null!;
         private ListBox outputMenuListBox = null!;
         private Button addOutputButton = null!;
         private Button removeOutputButton = null!;
@@ -43,6 +42,11 @@ namespace Soundboard
         private bool soundsMuted = false;
         private const byte DimWhiteLightValue = 1;
         private readonly Dictionary<int, byte> manualPadLights = new();
+
+        // Internal default light colour for light-test presses. (This was a
+        // hidden palette-selector ComboBox; a plain field serves the same role.)
+        private byte defaultLightColorValue = (byte)Random.Shared.Next(34, 38);
+
         private Button stopAllSoundsButton = null!;
         private string activeAudioMode = "TV";
         private readonly Dictionary<string, string?> audioModeAssignments = new()
@@ -56,16 +60,8 @@ namespace Soundboard
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ViciousMockery", "audio-settings.json");
 
-        private Button allOffButton = null!;
-        private Button allOnButton = null!;
-        private Button rainbow1Button = null!;
-        private Button rainbow2Button = null!;
         private Button assignSoundButton = null!;
         private Button clearAssignmentsButton = null!;
-
-        private System.Windows.Forms.Timer paletteCycleTimer = null!;
-        private int paletteCycleValue = 1;
-        private bool rainbowPageTwo = false;
 
         private readonly Dictionary<int, PadAction> padActions = new();
         private string? pendingSoundFilePath = null;
@@ -78,7 +74,6 @@ namespace Soundboard
         private readonly HashSet<string> activeSoundPaths = new(StringComparer.OrdinalIgnoreCase);
         private readonly object activeAudioPlayersLock = new();
         private int playbackGeneration = 0;
-        private readonly Dictionary<string, byte> profileBasePaletteValues = new();
 
         // Launchpad MK2 palette RGB approximations for values 0–127.
         // Values are discrete hardware palette entries, not a continuous ramp.
@@ -237,7 +232,6 @@ namespace Soundboard
             LoadAudioSettings();
             BuildWindow();
             BuildControls();
-            InitializePaletteCycle();
             FindMidiDevices();
 
             // Automatically connect to the Launchpad when it is available.
@@ -478,29 +472,6 @@ namespace Soundboard
             statusLabel.Text = "Disconnected.";
         }
 
-        private void MidiSelectorButton_Click(object? sender, EventArgs e)
-        {
-            using ContextMenuStrip menu = new ContextMenuStrip();
-
-            foreach (MidiDevice device in midiDevices.Items)
-            {
-                ToolStripMenuItem item = new ToolStripMenuItem(device.Name);
-                item.Tag = device;
-                item.Click += (_, _) =>
-                {
-                    midiDevices.SelectedItem = device;
-                    if (midiConnected)
-                    {
-                        CloseMidiDevice();
-                        ConnectButton_Click(this, EventArgs.Empty);
-                    }
-                };
-                menu.Items.Add(item);
-            }
-
-            menu.Show(midiDevices, new Point(0, midiDevices.Height));
-        }
-
         private void UpdateConnectionToggleAppearance()
         {
             // A readable rectangular connection toggle, rather than a tiny unlabeled circle.
@@ -611,7 +582,7 @@ namespace Soundboard
 
             (string? Name, byte? SelectedColorValue)? prompt = PromptForDisplayName(
                 defaultName,
-                existing?.LightColorValue ?? GetSelectedPaletteValue());
+                existing?.LightColorValue ?? defaultLightColorValue);
             if (prompt == null)
                 return;
 
@@ -666,21 +637,139 @@ namespace Soundboard
 
         private void UpdateSelectedPadButtonVisual()
         {
-            foreach (Control control in padGrid.Controls)
-            {
-                if (control is Button button
-                    && button.Tag is PadPosition position
-                    && position.Row * 8 + position.Column == selectedPadIndex)
-                {
-                    UpdatePadButtonVisualState(button, selectedPadIndex);
-                    break;
-                }
-            }
+            Button? button = FindPadButton(selectedPadIndex);
+            if (button != null)
+                UpdatePadButtonVisualState(button, selectedPadIndex);
         }
 
         // ============================================================
         // PAD CLICK
         // ============================================================
+
+        // ============================================================
+        // PAD PRESS (virtual clicks and physical MIDI presses share one path)
+        // ============================================================
+
+        private void PadButton_Click(object? sender, EventArgs e)
+        {
+            if (sender is not Button clickedButton || clickedButton.Tag is not PadPosition position)
+                return;
+
+            PressPad((position.Row * 8) + position.Column, clickedButton);
+        }
+
+        // Keep a named entry point for the MIDI marshalling hop in ProcessMidiInput.
+        private void HandlePhysicalPadPressed(int padIndex) => PressPad(padIndex);
+
+        private void PressPad(int padIndex, Button? padButton = null)
+        {
+            if (IsDisposed || padIndex < 0 || padIndex >= 64)
+                return;
+
+            int row = padIndex / 8;
+            int column = padIndex % 8;
+            padButton ??= FindPadButton(padIndex);
+
+            selectedPadIndex = padIndex;
+            RefreshSelectedPadEditor();
+
+            if (disabledPads.Contains(padIndex))
+            {
+                if (midiConnected)
+                    SendPad(row, column, 0);
+                statusLabel.Text = $"Pad {padIndex + 1} is disabled.";
+                if (padButton != null)
+                    UpdatePadButtonVisualState(padButton, padIndex);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(pendingSoundFilePath))
+            {
+                padActions[padIndex] = new PadAction
+                {
+                    SoundFilePath = pendingSoundFilePath,
+                    DisplayName = pendingDisplayName,
+                    LightColorValue = pendingLightColorValue
+                };
+
+                pendingSoundFilePath = null;
+                pendingDisplayName = null;
+                pendingLightColorValue = null;
+
+                if (padButton != null)
+                    UpdatePadButtonVisualState(padButton, padIndex);
+                RefreshSelectedPadEditor();
+                statusLabel.Text = $"Sound assigned to pad {padIndex + 1}.";
+                return;
+            }
+
+            if (padActions.TryGetValue(padIndex, out PadAction? assignedAction)
+                && !string.IsNullOrWhiteSpace(assignedAction.SoundFilePath))
+            {
+                byte velocity = assignedAction.LightColorValue ?? DimWhiteLightValue;
+                SendPad(row, column, velocity);
+                if (padButton != null)
+                    UpdatePadButtonVisualState(padButton, padIndex);
+                RefreshSelectedPadEditor();
+                PlayPadSound(assignedAction.SoundFilePath!);
+                if (lastSoundLabel != null)
+                    lastSoundLabel.Text = $"Last sound: {assignedAction.DisplayName ?? Path.GetFileNameWithoutExtension(assignedAction.SoundFilePath)}";
+                statusLabel.Text = soundsMuted
+                    ? $"Pad {padIndex + 1} light shown; sound is muted."
+                    : $"Playing sound for pad {padIndex + 1}.";
+                return;
+            }
+
+            // Colour-only pads light in their chosen colour but do not play audio.
+            if (padActions.TryGetValue(padIndex, out PadAction? colourOnlyAction)
+                && colourOnlyAction.LightColorValue.HasValue)
+            {
+                byte chosenColour = colourOnlyAction.LightColorValue.Value;
+                manualPadLights[padIndex] = chosenColour;
+                SendPad(row, column, chosenColour);
+                if (padButton != null)
+                    UpdatePadButtonVisualState(padButton, padIndex);
+                RefreshSelectedPadEditor();
+                statusLabel.Text = $"Pad {padIndex + 1} colour activated; no sound assigned.";
+                return;
+            }
+
+            // Unassigned pads are light-test controls: toggle between dim white
+            // and off (both paths share this now — a press can also turn the
+            // pad light off).
+            if (manualPadLights.ContainsKey(padIndex))
+            {
+                manualPadLights.Remove(padIndex);
+                SendPad(row, column, 0);
+                if (padButton != null)
+                    UpdatePadButtonVisualState(padButton, padIndex);
+                RefreshSelectedPadEditor();
+                statusLabel.Text = $"Pad {padIndex + 1} light turned off.";
+            }
+            else
+            {
+                manualPadLights[padIndex] = defaultLightColorValue;
+                SendPad(row, column, defaultLightColorValue);
+                if (padButton != null)
+                    UpdatePadButtonVisualState(padButton, padIndex);
+                RefreshSelectedPadEditor();
+                statusLabel.Text = $"Pad {padIndex + 1} dim white light turned on.";
+            }
+        }
+
+        private Button? FindPadButton(int padIndex)
+        {
+            foreach (Control control in padGrid.Controls)
+            {
+                if (control is Button button
+                    && button.Tag is PadPosition position
+                    && (position.Row * 8 + position.Column) == padIndex)
+                {
+                    return button;
+                }
+            }
+            return null;
+        }
 
         private void PadButton_MouseDown(object? sender, MouseEventArgs e)
         {
@@ -704,7 +793,7 @@ namespace Soundboard
 
                 (string? Name, byte? SelectedColorValue)? promptResult = PromptForDisplayName(
                     defaultName,
-                    assignedAction.LightColorValue ?? GetSelectedPaletteValue());
+                    assignedAction.LightColorValue ?? defaultLightColorValue);
 
                 if (promptResult == null)
                 {
@@ -729,110 +818,7 @@ namespace Soundboard
             statusLabel.Text = $"Pad {padIndex + 1} has no sound assigned.";
         }
 
-        private void PadButton_Click(object? sender, EventArgs e)
-        {
-            if (sender is not Button clickedButton)
-                return;
 
-            if (clickedButton.Tag is not PadPosition position)
-                return;
-
-            int padIndex = (position.Row * 8) + position.Column;
-
-            selectedPadIndex = padIndex;
-            RefreshSelectedPadEditor();
-
-            if (disabledPads.Contains(padIndex))
-            {
-                if (midiConnected)
-                    SendPad(position.Row, position.Column, 0);
-                statusLabel.Text = $"Pad {padIndex + 1} is disabled.";
-                UpdatePadButtonVisualState(clickedButton, padIndex);
-                return;
-            }
-
-            if (rainbowPageTwo && position.PaletteValue == 63)
-            {
-                if (paletteCycleTimer.Enabled)
-                    StopPaletteCycle();
-                else
-                    StartPaletteCycle();
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(pendingSoundFilePath))
-            {
-                padActions[padIndex] = new PadAction
-                {
-                    SoundFilePath = pendingSoundFilePath,
-                    DisplayName = pendingDisplayName,
-                    LightColorValue = pendingLightColorValue
-                };
-
-                pendingSoundFilePath = null;
-                pendingDisplayName = null;
-                pendingLightColorValue = null;
-
-                UpdatePadButtonVisualState(clickedButton, padIndex);
-                RefreshSelectedPadEditor();
-                statusLabel.Text = $"Sound assigned to pad {padIndex + 1}.";
-                return;
-            }
-
-            if (padActions.TryGetValue(padIndex, out PadAction? assignedAction)
-                && !string.IsNullOrWhiteSpace(assignedAction.SoundFilePath))
-            {
-                byte velocity = assignedAction.LightColorValue ?? DimWhiteLightValue;
-                SendPad(position.Row, position.Column, velocity);
-                UpdatePadButtonVisualState(clickedButton, padIndex);
-                RefreshSelectedPadEditor();
-                PlayPadSound(assignedAction.SoundFilePath!);
-                if (lastSoundLabel != null)
-                    lastSoundLabel.Text = $"Last sound: {assignedAction.DisplayName ?? Path.GetFileNameWithoutExtension(assignedAction.SoundFilePath)}";
-                statusLabel.Text = soundsMuted
-                    ? $"Pad {padIndex + 1} light shown; sound is muted."
-                    : $"Playing sound for pad {padIndex + 1}.";
-                return;
-            }
-
-            // Unassigned pads are light-test controls: toggle between dim white and off.
-            bool currentlyLit = manualPadLights.ContainsKey(padIndex);
-            if (currentlyLit)
-            {
-                manualPadLights.Remove(padIndex);
-                SendPad(position.Row, position.Column, 0);
-                UpdatePadButtonVisualState(clickedButton, padIndex);
-                RefreshSelectedPadEditor();
-                statusLabel.Text = $"Pad {padIndex + 1} light turned off.";
-            }
-            else
-            {
-                byte testColour = padActions.TryGetValue(padIndex, out PadAction? colourAction)
-                    && colourAction.LightColorValue.HasValue
-                    ? colourAction.LightColorValue.Value
-                    : DimWhiteLightValue;
-                manualPadLights[padIndex] = testColour;
-                SendPad(position.Row, position.Column, testColour);
-                UpdatePadButtonVisualState(clickedButton, padIndex);
-                RefreshSelectedPadEditor();
-                statusLabel.Text = $"Pad {padIndex + 1} dim white light turned on.";
-            }
-        }
-
-        // ============================================================
-        // PALETTE VALUE
-        // ============================================================
-
-        private byte GetSelectedPaletteValue()
-        {
-            if (paletteSelector.SelectedItem == null)
-                return 0;
-
-            if (byte.TryParse(paletteSelector.SelectedItem.ToString(), out byte value))
-                return value;
-
-            return 0;
-        }
 
         // ============================================================
         // SOUND ASSIGNMENT
@@ -865,7 +851,7 @@ namespace Soundboard
 
             (string? Name, byte? SelectedColorValue)? promptResult = PromptForDisplayName(
                 defaultName,
-                pendingLightColorValue ?? GetSelectedPaletteValue());
+                pendingLightColorValue ?? defaultLightColorValue);
 
             if (promptResult == null)
             {
@@ -890,7 +876,7 @@ namespace Soundboard
             byte? initialLightColorValue)
         {
             byte? selectedColorValue =
-                initialLightColorValue ?? GetSelectedPaletteValue();
+                initialLightColorValue ?? defaultLightColorValue;
 
             using Form promptForm = new Form();
             promptForm.Text = "Name this sound";
@@ -968,7 +954,7 @@ namespace Soundboard
             colorSwatchButton.Click += (_, _) =>
             {
                 byte? newColorValue = ShowColorPalettePicker(
-                    selectedColorValue ?? GetSelectedPaletteValue());
+                    selectedColorValue ?? defaultLightColorValue);
 
                 if (!newColorValue.HasValue)
                     return;
@@ -1314,82 +1300,6 @@ namespace Soundboard
             {
                 // The form is closing; ignore late MIDI messages.
             }
-        }
-
-        private void HandlePhysicalPadPressed(int padIndex)
-        {
-            if (IsDisposed || padIndex < 0 || padIndex >= 64)
-                return;
-
-            selectedPadIndex = padIndex;
-            RefreshSelectedPadEditor();
-
-            Button? button = null;
-            foreach (Control control in padGrid.Controls)
-            {
-                if (control is Button candidate
-                    && candidate.Tag is PadPosition position
-                    && (position.Row * 8 + position.Column) == padIndex)
-                {
-                    button = candidate;
-                    break;
-                }
-            }
-
-            if (disabledPads.Contains(padIndex))
-            {
-                SendPad(padIndex / 8, padIndex % 8, 0);
-                statusLabel.Text = $"Pad {padIndex + 1} is disabled.";
-                return;
-            }
-
-            if (padActions.TryGetValue(padIndex, out PadAction? assignedAction)
-                && !string.IsNullOrWhiteSpace(assignedAction.SoundFilePath))
-            {
-                byte assignedColor = assignedAction.LightColorValue ?? DimWhiteLightValue;
-                int row = padIndex / 8;
-                int column = padIndex % 8;
-
-                // A physical press immediately restores the pad's assigned colour.
-                SendPad(row, column, assignedColor);
-                if (button != null)
-                    UpdatePadButtonVisualState(button, padIndex);
-
-                PlayPadSound(assignedAction.SoundFilePath!);
-                if (lastSoundLabel != null)
-                {
-                    string name = !string.IsNullOrWhiteSpace(assignedAction.DisplayName)
-                        ? assignedAction.DisplayName!
-                        : Path.GetFileNameWithoutExtension(assignedAction.SoundFilePath);
-                    lastSoundLabel.Text = $"Last sound: {name}";
-                }
-
-                statusLabel.Text = soundsMuted
-                    ? $"Pad {padIndex + 1} colour activated; sound is muted."
-                    : $"Playing sound for pad {padIndex + 1}.";
-                return;
-            }
-
-            // Colour-only pads light in their chosen colour but do not play audio.
-            if (padActions.TryGetValue(padIndex, out PadAction? colourOnlyAction)
-                && colourOnlyAction.LightColorValue.HasValue)
-            {
-                byte chosenColour = colourOnlyAction.LightColorValue.Value;
-                manualPadLights[padIndex] = chosenColour;
-                SendPad(padIndex / 8, padIndex % 8, chosenColour);
-                if (button != null)
-                    UpdatePadButtonVisualState(button, padIndex);
-                RefreshSelectedPadEditor();
-                statusLabel.Text = $"Pad {padIndex + 1} colour activated; no sound assigned.";
-                return;
-            }
-
-            // Unassigned physical pads use the subdued white test light.
-            manualPadLights[padIndex] = DimWhiteLightValue;
-            SendPad(padIndex / 8, padIndex % 8, DimWhiteLightValue);
-            if (button != null)
-                UpdatePadButtonVisualState(button, padIndex);
-            statusLabel.Text = $"Pad {padIndex + 1} dim white light activated.";
         }
 
         private int GetPadIndexFromMidiNote(byte note)
@@ -1957,53 +1867,7 @@ namespace Soundboard
         }
 
         // ============================================================
-        // PALETTE CYCLE
-        // ============================================================
-
-        private void InitializePaletteCycle()
-        {
-            paletteCycleTimer = new System.Windows.Forms.Timer();
-            paletteCycleTimer.Interval = 75;
-            paletteCycleTimer.Tick += PaletteCycleTimer_Tick;
-        }
-
-        private void StartPaletteCycle()
-        {
-            if (!midiConnected)
-            {
-                statusLabel.Text = "Not connected to a MIDI output.";
-                return;
-            }
-
-            paletteCycleValue = 1;
-            paletteCycleTimer.Start();
-            statusLabel.Text = "Palette scanner running...";
-        }
-
-        private void StopPaletteCycle()
-        {
-            paletteCycleTimer?.Stop();
-        }
-
-        private void PaletteCycleTimer_Tick(object? sender, EventArgs e)
-        {
-            if (!midiConnected)
-            {
-                StopPaletteCycle();
-                return;
-            }
-
-            // Bottom-right physical Launchpad pad:
-            // row 7, column 7 = MIDI note 18.
-            SendPad(7, 7, (byte)paletteCycleValue);
-
-            paletteCycleValue++;
-            if (paletteCycleValue > 127)
-                paletteCycleValue = 1;
-        }
-
-        // ============================================================
-        // SEND PAD / SHOW PALETTE
+        // SEND PAD
         // ============================================================
         //
         // LAUNCHPAD MK2 SESSION LAYOUT
@@ -2054,51 +1918,9 @@ namespace Soundboard
             statusLabel.Text = "Connected. Launchpad lights set to dim white.";
         }
 
-        private void ShowPalette(int startValue)
-        {
-            if (!midiConnected)
-            {
-                statusLabel.Text = "Not connected to a MIDI output.";
-                return;
-            }
-
-            for (int row = 0; row < 8; row++)
-            {
-                for (int column = 0; column < 8; column++)
-                {
-                    int value = startValue + (row * 8) + column;
-                    if (value <= 127)
-                        SendPad(row, column, (byte)value);
-                    else
-                        // Page 2, pad 64:
-                        // this pad is reserved for the palette scanner.
-                        SendPad(row, column, 0);
-                }
-            }
-
-            statusLabel.Text = $"Palette values {startValue}\u2013{Math.Min(startValue + 63, 127)} displayed.";
-        }
-
-        private void Rainbow1Button_Click(object? sender, EventArgs e)
-        {
-            StopPaletteCycle();
-            rainbowPageTwo = false;
-            ShowPalette(1);
-        }
-
-        private void Rainbow2Button_Click(object? sender, EventArgs e)
-        {
-            StopPaletteCycle();
-            rainbowPageTwo = true;
-            ShowPalette(65);
-            paletteCycleValue = 1;
-        }
-
         // ============================================================
-        // ALL OFF / ALL ON
+        // TURN EVERYTHING OFF
         // ============================================================
-
-        private void AllOffButton_Click(object? sender, EventArgs e) => TurnEverythingOff();
 
         private void TurnEverythingOff()
         {
@@ -2114,34 +1936,10 @@ namespace Soundboard
                 for (int column = 0; column < 8; column++)
                     SendPad(row, column, 0);
 
+            // Paint the virtual grid "off" in the dark-panel palette; the old
+            // SystemColors.Control reset fought the dark theme.
             ResetPadGrid();
             statusLabel.Text = "All Launchpad pads turned off.";
-        }
-
-        private void AllOnButton_Click(object? sender, EventArgs e)
-        {
-            if (!midiConnected)
-            {
-                statusLabel.Text = "Not connected to a MIDI output.";
-                return;
-            }
-
-            byte velocity = GetSelectedPaletteValue();
-
-            for (int row = 0; row < 8; row++)
-                for (int column = 0; column < 8; column++)
-                    SendPad(row, column, velocity);
-
-            foreach (Control control in padGrid.Controls)
-            {
-                if (control is Button button)
-                {
-                    button.BackColor = SystemColors.Highlight;
-                    button.ForeColor = SystemColors.HighlightText;
-                }
-            }
-
-            statusLabel.Text = $"All Launchpad pads set to velocity {velocity}.";
         }
 
         private void ResetPadGrid()
@@ -2150,8 +1948,8 @@ namespace Soundboard
             {
                 if (control is Button button)
                 {
-                    button.BackColor = SystemColors.Control;
-                    button.ForeColor = SystemColors.ControlText;
+                    button.BackColor = Color.FromArgb(31, 31, 31);
+                    button.ForeColor = Color.FromArgb(92, 92, 92);
                 }
             }
         }
