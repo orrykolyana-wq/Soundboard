@@ -7,338 +7,676 @@ namespace Soundboard
 {
     partial class MainForm
     {
-        private TableLayoutPanel BuildWindow()
+        private void BuildWindow()
         {
-            Text = "Soundboard Slam";
-            Width = 900;
-            Height = 950;
-            MinimumSize = new Size(850, 900);
+            Text = "Vicious Mockery";
+            Width = 1580;
+            Height = 900;
+            MinimumSize = new Size(1280, 720);
             StartPosition = FormStartPosition.CenterScreen;
             FormClosing += MainForm_FormClosing;
+        }
 
-            TableLayoutPanel mainLayout = new TableLayoutPanel();
-            mainLayout.Dock = DockStyle.Fill;
-            mainLayout.ColumnCount = 2;
-            mainLayout.RowCount = 2;
+        private void BuildControls()
+        {
+            // Three-part workspace: device controls, pad board, selected-pad editor.
+            TableLayoutPanel mainLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1,
+                Padding = new Padding(10),
+                BackColor = Color.FromArgb(25, 25, 25)
+            };
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 390));
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 315));
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            mainLayout.Padding = new Padding(10);
             Controls.Add(mainLayout);
 
-            TableLayoutPanel topLayout = BuildTopLayout();
-            mainLayout.Controls.Add(topLayout, 0, 0);
+            // LEFT SIDEBAR
+            TableLayoutPanel leftLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 12,
+                Padding = new Padding(0, 0, 12, 0),
+                BackColor = Color.FromArgb(30, 30, 30)
+            };
+            leftLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));  // heading
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));  // midi device
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));  // connection + settings
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));  // audio heading
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));  // audio mode
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));  // outputs heading
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // output list
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));  // add/remove
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));  // stop all
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));  // now playing heading
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));  // now playing info
+            leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 74));  // status
+            mainLayout.Controls.Add(leftLayout, 0, 0);
 
-            BuildPadGrid();
-            BuildSideLayout();
+            Label controlsHeading = new Label
+            {
+                Text = "VICIOUS MOCKERY",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(45, 45, 48)
+            };
+            leftLayout.Controls.Add(controlsHeading, 0, 0);
 
-            mainLayout.Controls.Add(padGrid, 0, 1);
-            mainLayout.Controls.Add(sideLayout, 1, 1);
+            midiDevices = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Margin = new Padding(0, 3, 0, 3)
+            };
+            leftLayout.Controls.Add(midiDevices, 0, 1);
 
-            return mainLayout;
-        }
-
-        private TableLayoutPanel BuildTopLayout()
-        {
-            TableLayoutPanel topLayout = new TableLayoutPanel();
-            topLayout.Dock = DockStyle.Fill;
-            topLayout.ColumnCount = 4;
-            topLayout.RowCount = 9;
-
-            topLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
-            topLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            topLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115));
-            topLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115));
-
-            for (int row = 0; row < 4; row++)
-                topLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
-
-            topLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
-            topLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-
-            BuildMidiControls(topLayout);
-            BuildPaletteControls(topLayout);
-            BuildAudioOutputControls(topLayout);
-            BuildProfileControls(topLayout);
-            BuildActionButtons(topLayout);
-            BuildStatusControl(topLayout);
-
-            return topLayout;
-        }
-
-        private void BuildMidiControls(TableLayoutPanel topLayout)
-        {
-            Label midiLabel = new Label();
-            midiLabel.Text = "MIDI Output:";
-            midiLabel.Dock = DockStyle.Fill;
-            midiLabel.TextAlign = ContentAlignment.MiddleLeft;
-            topLayout.Controls.Add(midiLabel, 0, 0);
-
-            midiDevices = new ComboBox();
-            midiDevices.Dock = DockStyle.Fill;
-            midiDevices.DropDownStyle = ComboBoxStyle.DropDownList;
-            topLayout.Controls.Add(midiDevices, 1, 0);
-
-            connectButton = new Button();
-            connectButton.Text = "";
-            connectButton.Dock = DockStyle.Fill;
-            connectButton.BackColor = Color.Gray;
-            connectButton.ForeColor = Color.White;
-            connectButton.Click += ConnectButton_Click;
-            connectButton.FlatStyle = FlatStyle.Flat;
+            FlowLayoutPanel connectionRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0),
+                Padding = new Padding(0, 3, 0, 3)
+            };
+            connectButton = new Button
+            {
+                Text = "CONNECT",
+                Width = 174,
+                Height = 34,
+                BackColor = Color.Gray,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(0, 0, 8, 0)
+            };
             connectButton.FlatAppearance.BorderSize = 0;
-            connectButton.Size = new Size(32, 32);
-            connectButton.Margin = new Padding(0);
-            connectButton.TextAlign = ContentAlignment.MiddleCenter;
-            topLayout.Controls.Add(connectButton, 2, 0);
-            topLayout.Controls.Add(new Label(), 3, 0);
+            connectButton.Click += ConnectButton_Click;
+            audioSettingsButton = new Button
+            {
+                Text = "AUDIO",
+                Width = 66,
+                Height = 34,
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                BackColor = Color.FromArgb(48, 48, 52),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(0),
+                AccessibleName = "Audio Settings",
+                UseVisualStyleBackColor = false
+            };
+            audioSettingsButton.FlatAppearance.BorderColor = Color.Silver;
+            audioSettingsButton.FlatAppearance.BorderSize = 1;
+            audioSettingsButton.Click += AudioSettingsButton_Click;
+            connectionRow.Controls.Add(connectButton);
+            connectionRow.Controls.Add(audioSettingsButton);
+            leftLayout.Controls.Add(connectionRow, 0, 2);
 
-            deviceCountLabel = new Label();
-            deviceCountLabel.Text = "MIDI: Launchpad MK2 (0 outputs)";
-            deviceCountLabel.Dock = DockStyle.Fill;
-            deviceCountLabel.TextAlign = ContentAlignment.MiddleLeft;
-            deviceCountLabel.Margin = new Padding(0);
-            deviceCountLabel.BackColor = Color.FromArgb(243, 243, 243);
-            deviceCountLabel.BorderStyle = BorderStyle.FixedSingle;
-            deviceCountLabel.Padding = new Padding(6, 2, 6, 2);
-            topLayout.Controls.Add(deviceCountLabel, 1, 1);
-            topLayout.SetColumnSpan(deviceCountLabel, 3);
-        }
+            Label audioHeading = new Label
+            {
+                Text = "AUDIO MODE",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = Color.Gainsboro
+            };
+            leftLayout.Controls.Add(audioHeading, 0, 3);
 
-        private void BuildPaletteControls(TableLayoutPanel topLayout)
-        {
-            Label paletteLabel = new Label();
-            paletteLabel.Text = "Palette Value:";
-            paletteLabel.Dock = DockStyle.Fill;
-            paletteLabel.TextAlign = ContentAlignment.MiddleLeft;
-            topLayout.Controls.Add(paletteLabel, 0, 2);
+            audioModeSelector = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Margin = new Padding(0, 3, 0, 3)
+            };
+            audioModeSelector.Items.AddRange(new object[] { "Off", "TV", "Headset", "Broadcast" });
+            audioModeSelector.SelectedItem = activeAudioMode;
+            audioModeSelector.SelectedIndexChanged += (_, _) =>
+            {
+                if (audioModeSelector.SelectedItem is string mode)
+                {
+                    activeAudioMode = mode;
+                    selectedOutputDeviceName = mode == "Off" ? null : audioModeAssignments[mode];
+                    if (mode != "Off" && string.IsNullOrWhiteSpace(selectedOutputDeviceName))
+                        statusLabel.Text = $"{mode} has no audio output assigned yet. Open Audio Settings.";
+                    else
+                        statusLabel.Text = mode == "Off" ? "Audio output off." : $"Audio mode: {mode}";
+                    SaveAudioSettings();
+                }
+            };
+            leftLayout.Controls.Add(audioModeSelector, 0, 4);
 
-            paletteSelector = new ComboBox();
-            paletteSelector.Dock = DockStyle.Fill;
-            paletteSelector.DropDownStyle = ComboBoxStyle.DropDownList;
+            Label outputsHeading = new Label
+            {
+                Text = "FAVOURITE OUTPUTS",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = Color.Gainsboro
+            };
+            leftLayout.Controls.Add(outputsHeading, 0, 5);
+
+            outputMenuListBox = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                IntegralHeight = false,
+                SelectionMode = SelectionMode.One,
+                Margin = new Padding(0, 4, 0, 4)
+            };
+            outputMenuListBox.SelectedIndexChanged += (_, _) =>
+            {
+                if (outputMenuListBox.SelectedItem is string selectedDeviceName
+                    && !selectedDeviceName.StartsWith("No outputs", StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedOutputDeviceName = selectedDeviceName;
+                    if (activeAudioMode != "Off")
+                    {
+                        audioModeAssignments[activeAudioMode] = selectedDeviceName;
+                        SaveAudioSettings();
+                    }
+                }
+            };
+            leftLayout.Controls.Add(outputMenuListBox, 0, 6);
+
+            FlowLayoutPanel outputButtons = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0),
+                Padding = new Padding(0, 2, 0, 0)
+            };
+            addOutputButton = new Button
+            {
+                Text = "Add Output",
+                Width = 130,
+                Height = 29,
+                Margin = new Padding(0, 0, 8, 0),
+                BackColor = Color.FromArgb(58, 58, 62),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false
+            };
+            addOutputButton.FlatAppearance.BorderColor = Color.Silver;
+            addOutputButton.Click += AddOutputButton_Click;
+            removeOutputButton = new Button
+            {
+                Text = "Remove",
+                Width = 100,
+                Height = 29,
+                Margin = new Padding(0),
+                BackColor = Color.FromArgb(58, 58, 62),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false
+            };
+            removeOutputButton.FlatAppearance.BorderColor = Color.Silver;
+            removeOutputButton.Click += RemoveOutputButton_Click;
+            outputButtons.Controls.Add(addOutputButton);
+            outputButtons.Controls.Add(removeOutputButton);
+            leftLayout.Controls.Add(outputButtons, 0, 7);
+
+            stopAllSoundsButton = new Button
+            {
+                Text = "STOP ALL SOUNDS",
+                Dock = DockStyle.Fill,
+                BackColor = Color.Firebrick,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Margin = new Padding(0, 5, 0, 5)
+            };
+            stopAllSoundsButton.FlatAppearance.BorderSize = 0;
+            stopAllSoundsButton.Click += (_, _) => StopAllSounds();
+            leftLayout.Controls.Add(stopAllSoundsButton, 0, 8);
+
+            Label nowPlayingHeading = new Label
+            {
+                Text = "ACTIVITY",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = Color.Gainsboro
+            };
+            leftLayout.Controls.Add(nowPlayingHeading, 0, 9);
+
+            lastSoundLabel = new Label
+            {
+                Text = "Last sound: —",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true,
+                Padding = new Padding(8, 4, 8, 4),
+                BackColor = Color.FromArgb(45, 45, 48),
+                ForeColor = Color.White
+            };
+            leftLayout.Controls.Add(lastSoundLabel, 0, 10);
+
+            statusLabel = new Label
+            {
+                Text = "Not connected.",
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.TopLeft,
+                AutoEllipsis = true,
+                Padding = new Padding(8, 7, 8, 7),
+                Margin = new Padding(0, 6, 0, 0),
+                Font = new Font("Segoe UI", 9, FontStyle.Regular),
+                BackColor = Color.FromArgb(243, 243, 243),
+                ForeColor = Color.Black,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            leftLayout.Controls.Add(statusLabel, 0, 11);
+
+            // RIGHT SIDE: board title/action row and the 8x8 pad grid.
+            TableLayoutPanel boardLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
+            boardLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            boardLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+            boardLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            mainLayout.Controls.Add(boardLayout, 1, 0);
+
+            FlowLayoutPanel boardToolbar = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                Margin = new Padding(0, 0, 0, 6),
+                Padding = new Padding(0)
+            };
+            Label boardHeading = new Label
+            {
+                Text = "PAD BOARD",
+                AutoSize = false,
+                Width = 180,
+                Height = 38,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                ForeColor = Color.White,
+                Margin = new Padding(0, 0, 12, 0)
+            };
+            assignSoundButton = new Button
+            {
+                Text = "Assign Sound",
+                Width = 140,
+                Height = 34,
+                Margin = new Padding(0, 2, 8, 0),
+                BackColor = Color.FromArgb(58, 58, 62),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false
+            };
+            assignSoundButton.FlatAppearance.BorderColor = Color.Silver;
+            assignSoundButton.Click += AssignSoundButton_Click;
+            clearAssignmentsButton = new Button
+            {
+                Text = "Clear Assignments",
+                Width = 145,
+                Height = 34,
+                Margin = new Padding(0, 2, 0, 0),
+                BackColor = Color.FromArgb(58, 58, 62),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                UseVisualStyleBackColor = false
+            };
+            clearAssignmentsButton.FlatAppearance.BorderColor = Color.Silver;
+            clearAssignmentsButton.Click += ClearAssignmentsButton_Click;
+            muteButton = new Button
+            {
+                Text = "SOUND ON",
+                Width = 100,
+                Height = 34,
+                Margin = new Padding(0, 2, 8, 0),
+                BackColor = Color.ForestGreen,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                UseVisualStyleBackColor = false
+            };
+            muteButton.FlatAppearance.BorderColor = Color.Silver;
+            muteButton.FlatAppearance.BorderSize = 1;
+            muteButton.Click += (_, _) =>
+            {
+                soundsMuted = !soundsMuted;
+                muteButton.Text = soundsMuted ? "MUTED" : "SOUND ON";
+                muteButton.BackColor = soundsMuted ? Color.Firebrick : Color.ForestGreen;
+                statusLabel.Text = soundsMuted ? "Sound playback muted; assignments are preserved." : "Sound playback enabled.";
+            };
+            boardToolbar.Controls.Add(boardHeading);
+            activateLayoutButton = new Button
+            {
+                Text = "ACTIVATE",
+                Width = 112,
+                Height = 34,
+                Margin = new Padding(0, 2, 8, 0),
+                BackColor = Color.FromArgb(58, 58, 62),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                UseVisualStyleBackColor = false,
+                Enabled = false,
+                AccessibleName = "Apply saved pad colours to the Launchpad"
+            };
+            activateLayoutButton.FlatAppearance.BorderColor = Color.Silver;
+            activateLayoutButton.Click += ActivateLayoutButton_Click;
+            boardToolbar.Controls.Add(activateLayoutButton);
+            boardToolbar.Controls.Add(muteButton);
+            boardToolbar.Controls.Add(assignSoundButton);
+            boardToolbar.Controls.Add(clearAssignmentsButton);
+            boardLayout.Controls.Add(boardToolbar, 0, 0);
+
+            padGrid = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 8,
+                RowCount = 8,
+                Margin = new Padding(0),
+                Padding = new Padding(2)
+            };
+            for (int column = 0; column < 8; column++)
+                padGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12.5f));
+            for (int row = 0; row < 8; row++)
+                padGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 12.5f));
+            boardLayout.Controls.Add(padGrid, 0, 1);
+
+            // Keep the hidden palette selector as an internal default-colour source.
+            paletteSelector = new ComboBox { Visible = false, DropDownStyle = ComboBoxStyle.DropDownList };
             for (int value = 0; value <= 127; value++)
                 paletteSelector.Items.Add(value.ToString());
             paletteSelector.SelectedIndex = Random.Shared.Next(34, 38);
-            topLayout.Controls.Add(paletteSelector, 1, 2);
+            Controls.Add(paletteSelector);
 
-            allOffButton = new Button();
-            allOffButton.Text = "ALL OFF";
-            allOffButton.Dock = DockStyle.Fill;
+            allOffButton = new Button { Text = "ALL OFF", Visible = false };
+            allOnButton = new Button { Text = "ALL ON", Visible = false };
+            rainbow1Button = new Button { Text = "\U0001F308 1", Visible = false };
+            rainbow2Button = new Button { Text = "\U0001F308 2", Visible = false };
+            rainbow1Button.Click += Rainbow1Button_Click;
+            rainbow2Button.Click += Rainbow2Button_Click;
             allOffButton.Click += AllOffButton_Click;
-            topLayout.Controls.Add(allOffButton, 2, 2);
-
-            allOnButton = new Button();
-            allOnButton.Text = "ALL ON";
-            allOnButton.Dock = DockStyle.Fill;
             allOnButton.Click += AllOnButton_Click;
-            topLayout.Controls.Add(allOnButton, 3, 2);
-        }
-
-        private void BuildAudioOutputControls(TableLayoutPanel topLayout)
-        {
-            Label audioOutputLabel = new Label();
-            audioOutputLabel.Text = "Audio Output:";
-            audioOutputLabel.Dock = DockStyle.Fill;
-            audioOutputLabel.TextAlign = ContentAlignment.MiddleLeft;
-            topLayout.Controls.Add(audioOutputLabel, 0, 4);
-
-            audioOutputSelector = new ComboBox();
-            audioOutputSelector.Dock = DockStyle.Fill;
-            audioOutputSelector.DropDownStyle = ComboBoxStyle.DropDownList;
-            audioOutputSelector.IntegralHeight = false;
-            audioOutputSelector.SelectedIndexChanged += (_, _) =>
-            {
-                if (audioOutputSelector.SelectedItem is string selectedDeviceName)
-                    selectedOutputDeviceName = selectedDeviceName;
-            };
-            topLayout.Controls.Add(audioOutputSelector, 1, 4);
-            topLayout.SetColumnSpan(audioOutputSelector, 2);
-
-            addOutputButton = new Button();
-            addOutputButton.Text = "Add Output";
-            addOutputButton.Dock = DockStyle.Fill;
-            addOutputButton.Click += AddOutputButton_Click;
-            topLayout.Controls.Add(addOutputButton, 3, 4);
-
-            outputMenuListBox = new ListBox();
-            outputMenuListBox.Dock = DockStyle.Fill;
-            outputMenuListBox.IntegralHeight = false;
-            outputMenuListBox.SelectionMode = SelectionMode.One;
-            outputMenuListBox.SelectedIndexChanged += (_, _) =>
-            {
-                if (outputMenuListBox.SelectedItem is string selectedDeviceName)
-                    selectedOutputDeviceName = selectedDeviceName;
-            };
-
-            Label outputFavoritesLabel = new Label();
-            outputFavoritesLabel.Text = "Added Outputs:";
-            outputFavoritesLabel.Dock = DockStyle.Fill;
-            outputFavoritesLabel.TextAlign = ContentAlignment.MiddleLeft;
-            outputFavoritesLabel.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-            topLayout.Controls.Add(outputFavoritesLabel, 0, 6);
-            topLayout.SetColumnSpan(outputFavoritesLabel, 4);
-
-            topLayout.Controls.Add(outputMenuListBox, 0, 7);
-            topLayout.SetColumnSpan(outputMenuListBox, 4);
 
             PopulateAudioOutputDevices();
-        }
+            ApplyActiveAudioMode();
 
-        private void BuildProfileControls(TableLayoutPanel topLayout)
-        {
-            Label profileLabel = new Label();
-            profileLabel.Text = "Profile:";
-            profileLabel.Dock = DockStyle.Fill;
-            profileLabel.TextAlign = ContentAlignment.MiddleLeft;
-            topLayout.Controls.Add(profileLabel, 0, 3);
-
-            profileSelector = new ComboBox();
-            profileSelector.Dock = DockStyle.Fill;
-            profileSelector.DropDownStyle = ComboBoxStyle.DropDownList;
-            profileBasePaletteValues["Janeway"] = 24;
-            profileBasePaletteValues["Shorsey"] = 72;
-            profileSelector.Items.Add("Janeway");
-            profileSelector.Items.Add("Shorsey");
-            profileSelector.SelectedIndex = 0;
-            profileSelector.SelectedIndexChanged += (_, _) =>
-            {
-                if (profileSelector.SelectedItem is string profileName)
-                {
-                    currentProfileName = profileName;
-                    ApplyProfilePalette(profileName);
-                }
-            };
-            topLayout.Controls.Add(profileSelector, 1, 3);
-            topLayout.SetColumnSpan(profileSelector, 2);
-
-            newProfileButton = new Button();
-            newProfileButton.Text = "New Profile";
-            newProfileButton.Dock = DockStyle.Fill;
-            newProfileButton.Click += NewProfileButton_Click;
-            topLayout.Controls.Add(newProfileButton, 3, 3);
-        }
-
-        private void BuildActionButtons(TableLayoutPanel topLayout)
-        {
-            assignSoundButton = new Button();
-            assignSoundButton.Text = "Assign Sound";
-            assignSoundButton.Dock = DockStyle.Fill;
-            assignSoundButton.Click += AssignSoundButton_Click;
-            topLayout.Controls.Add(assignSoundButton, 0, 5);
-            topLayout.SetColumnSpan(assignSoundButton, 2);
-
-            saveProfileButton = new Button();
-            saveProfileButton.Text = "Save Profile";
-            saveProfileButton.Dock = DockStyle.Fill;
-            saveProfileButton.Click += SaveProfileButton_Click;
-            topLayout.Controls.Add(saveProfileButton, 2, 5);
-
-            loadProfileButton = new Button();
-            loadProfileButton.Text = "Load Profile";
-            loadProfileButton.Dock = DockStyle.Fill;
-            loadProfileButton.Click += LoadProfileButton_Click;
-            topLayout.Controls.Add(loadProfileButton, 3, 5);
-        }
-
-        private void BuildStatusControl(TableLayoutPanel topLayout)
-        {
-            statusLabel = new Label();
-            statusLabel.Text = "Not connected.";
-            statusLabel.Dock = DockStyle.Fill;
-            statusLabel.TextAlign = ContentAlignment.MiddleLeft;
-            statusLabel.Margin = new Padding(0, 4, 0, 0);
-            statusLabel.Font = new Font("Segoe UI", 10, FontStyle.Regular);
-            statusLabel.BackColor = Color.FromArgb(243, 243, 243);
-            statusLabel.BorderStyle = BorderStyle.FixedSingle;
-            statusLabel.Padding = new Padding(6, 2, 6, 2);
-            topLayout.Controls.Add(statusLabel, 0, 8);
-            topLayout.SetColumnSpan(statusLabel, 4);
-        }
-
-        private void BuildPadGrid()
-        {
-            padGrid = new TableLayoutPanel();
-            padGrid.Dock = DockStyle.Fill;
-            padGrid.ColumnCount = 8;
-            padGrid.RowCount = 8;
-            padGrid.Margin = new Padding(5);
-            padGrid.Padding = new Padding(5);
-
-            for (int column = 0; column < 8; column++)
-                padGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12.5f));
-
-            for (int row = 0; row < 8; row++)
-                padGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 12.5f));
-
+            // Create the 64 virtual pads. MIDI note mapping remains unchanged.
             for (int row = 0; row < 8; row++)
             {
                 for (int column = 0; column < 8; column++)
                 {
-                    Button padButton = new Button();
-                    int paletteValue = (row * 8) + column;
-                    padButton.Text = (paletteValue + 1).ToString();
-                    padButton.Dock = DockStyle.Fill;
-                    padButton.Margin = new Padding(3);
-                    padButton.TextAlign = ContentAlignment.MiddleCenter;
-                    padButton.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-                    padButton.Tag = new PadPosition
+                    Button padButton = new Button
                     {
-                        Row = row,
-                        Column = column,
-                        PaletteValue = paletteValue
+                        Text = ((row * 8) + column + 1).ToString(),
+                        Dock = DockStyle.Fill,
+                        Margin = new Padding(3),
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                        BackColor = Color.FromArgb(31, 31, 31),
+                        ForeColor = Color.FromArgb(78, 78, 78),
+                        FlatStyle = FlatStyle.Flat,
+                        UseVisualStyleBackColor = false,
+                        Tag = new PadPosition { Row = row, Column = column, PaletteValue = (row * 8) + column }
                     };
+                    padButton.FlatAppearance.BorderColor = Color.Gainsboro;
+                    padButton.FlatAppearance.BorderSize = 2;
+                    padButton.FlatAppearance.MouseOverBackColor = padButton.BackColor;
+                    padButton.FlatAppearance.MouseDownBackColor = padButton.BackColor;
                     padButton.Click += PadButton_Click;
                     padButton.MouseDown += PadButton_MouseDown;
                     padGrid.Controls.Add(padButton, column, row);
                 }
             }
+
+            BuildSelectedPadEditor(mainLayout);
+            RefreshSelectedPadEditor();
         }
 
-        private void BuildSideLayout()
+        private void BuildSelectedPadEditor(TableLayoutPanel mainLayout)
         {
-            sideLayout = new TableLayoutPanel();
-            sideLayout.Dock = DockStyle.Fill;
-            sideLayout.ColumnCount = 1;
-            sideLayout.RowCount = 3;
-            sideLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
-            sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
-            sideLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 20));
-            sideLayout.Margin = new Padding(5);
-            sideLayout.Padding = new Padding(5);
+            Panel frame = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(34, 34, 34),
+                Padding = new Padding(10),
+                Margin = new Padding(8, 0, 0, 0)
+            };
+            mainLayout.Controls.Add(frame, 2, 0);
 
-            rainbow1Button = new Button();
-            rainbow1Button.Text = "\U0001f308 1";
-            rainbow1Button.Dock = DockStyle.Fill;
-            rainbow1Button.Margin = new Padding(3);
-            rainbow1Button.Font = new Font("Segoe UI Emoji", 20, FontStyle.Regular);
-            rainbow1Button.BackColor = Color.FromArgb(255, 130, 120);
-            rainbow1Button.ForeColor = Color.White;
-            rainbow1Button.Click += Rainbow1Button_Click;
-            sideLayout.Controls.Add(rainbow1Button, 0, 0);
+            TableLayoutPanel editor = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 11,
+                BackColor = Color.FromArgb(34, 34, 34),
+                Padding = new Padding(0)
+            };
+            editor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 26)); // heading
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 100)); // selected pad number
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 25)); // name heading
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 34)); // name field
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 48)); // enable toggle
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); // sound heading
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 48)); // sound control
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); // sound name
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 34)); // clear selected pad
+            editor.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); // colour heading
+            editor.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // colour and palette
+            frame.Controls.Add(editor);
 
-            rainbow2Button = new Button();
-            rainbow2Button.Text = "\U0001f308 2";
-            rainbow2Button.Dock = DockStyle.Fill;
-            rainbow2Button.Margin = new Padding(3);
-            rainbow2Button.Font = new Font("Segoe UI Emoji", 20, FontStyle.Regular);
-            rainbow2Button.BackColor = Color.FromArgb(120, 170, 255);
-            rainbow2Button.ForeColor = Color.White;
-            rainbow2Button.Click += Rainbow2Button_Click;
-            sideLayout.Controls.Add(rainbow2Button, 0, 1);
+            Label heading = new Label
+            {
+                Text = "SELECTED PAD",
+                Dock = DockStyle.Fill,
+                ForeColor = Color.Gainsboro,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            editor.Controls.Add(heading, 0, 0);
 
-            clearAssignmentsButton = new Button();
-            clearAssignmentsButton.Text = "Clear";
-            clearAssignmentsButton.Dock = DockStyle.Fill;
-            clearAssignmentsButton.Margin = new Padding(3);
-            clearAssignmentsButton.BackColor = Color.FromArgb(245, 245, 245);
-            clearAssignmentsButton.ForeColor = Color.Black;
-            clearAssignmentsButton.Click += ClearAssignmentsButton_Click;
-            sideLayout.Controls.Add(clearAssignmentsButton, 0, 2);
+            selectedPadNumberLabel = new Label
+            {
+                Text = "1",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(15, 15, 15),
+                ForeColor = Color.WhiteSmoke,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Segoe UI", 34, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(0, 2, 0, 5)
+            };
+            editor.Controls.Add(selectedPadNumberLabel, 0, 1);
+
+            editor.Controls.Add(MakeEditorHeading("PAD NAME"), 0, 2);
+            selectedPadNameTextBox = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(18, 18, 18),
+                ForeColor = Color.WhiteSmoke,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Segoe UI", 10),
+                Margin = new Padding(0, 0, 0, 5)
+            };
+            selectedPadNameTextBox.TextChanged += SelectedPadNameTextBox_TextChanged;
+            editor.Controls.Add(selectedPadNameTextBox, 0, 3);
+
+            selectedPadEnabledButton = new Button
+            {
+                Text = "PAD ENABLED   ● ON",
+                Dock = DockStyle.Fill,
+                BackColor = Color.ForestGreen,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Margin = new Padding(0, 3, 0, 5),
+                UseVisualStyleBackColor = false
+            };
+            selectedPadEnabledButton.FlatAppearance.BorderColor = Color.Silver;
+            selectedPadEnabledButton.Click += SelectedPadEnabledButton_Click;
+            editor.Controls.Add(selectedPadEnabledButton, 0, 4);
+
+            editor.Controls.Add(MakeEditorHeading("SOUND"), 0, 5);
+            selectedPadSoundButton = new Button
+            {
+                Text = "◖))    ASSIGN SOUND",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(55, 55, 55),
+                ForeColor = Color.WhiteSmoke,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Margin = new Padding(0, 0, 0, 4),
+                UseVisualStyleBackColor = false
+            };
+            selectedPadSoundButton.FlatAppearance.BorderColor = Color.Silver;
+            selectedPadSoundButton.Click += SelectedPadSoundButton_Click;
+            editor.Controls.Add(selectedPadSoundButton, 0, 6);
+
+            selectedPadSoundNameLabel = new Label
+            {
+                Text = "(No sound assigned)",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(18, 18, 18),
+                ForeColor = Color.Silver,
+                BorderStyle = BorderStyle.FixedSingle,
+                Padding = new Padding(7, 0, 4, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true,
+                Margin = new Padding(0, 0, 0, 5)
+            };
+            editor.Controls.Add(selectedPadSoundNameLabel, 0, 7);
+
+            Button clearSelectedPadButton = new Button
+            {
+                Text = "⊘   CLEAR PAD / TURN LIGHT OFF",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(82, 28, 28),
+                ForeColor = Color.WhiteSmoke,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                Margin = new Padding(0, 0, 0, 4),
+                UseVisualStyleBackColor = false
+            };
+            clearSelectedPadButton.FlatAppearance.BorderColor = Color.FromArgb(160, 90, 90);
+            clearSelectedPadButton.Click += (_, _) => ClearSelectedPad();
+            editor.Controls.Add(clearSelectedPadButton, 0, 8);
+
+            editor.Controls.Add(MakeEditorHeading("PAD COLOUR"), 0, 9);
+
+            TableLayoutPanel colourLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3,
+                BackColor = Color.FromArgb(34, 34, 34),
+                Padding = new Padding(0)
+            };
+            colourLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            colourLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+            colourLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+            colourLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            editor.Controls.Add(colourLayout, 0, 10);
+
+            selectedPadColourPreview = new Button
+            {
+                Text = "CURRENT COLOUR  ·  CLICK TO CHOOSE",
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(37, 37, 37),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                Margin = new Padding(0, 0, 0, 4),
+                UseVisualStyleBackColor = false
+            };
+            selectedPadColourPreview.FlatAppearance.BorderColor = Color.Silver;
+            selectedPadColourPreview.Click += (_, _) =>
+            {
+                if (selectedPadPalettePanel != null)
+                    selectedPadPalettePanel.Focus();
+                statusLabel.Text = "Choose a hardware colour from the palette below.";
+            };
+            colourLayout.Controls.Add(selectedPadColourPreview, 0, 0);
+
+            Label paletteLabel = new Label
+            {
+                Text = "COLOUR PALETTE  /  128 HARDWARE VALUES",
+                Dock = DockStyle.Fill,
+                ForeColor = Color.Silver,
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            colourLayout.Controls.Add(paletteLabel, 0, 1);
+
+            Panel paletteScroll = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                BackColor = Color.FromArgb(18, 18, 18),
+                BorderStyle = BorderStyle.FixedSingle,
+                Padding = new Padding(3)
+            };
+            colourLayout.Controls.Add(paletteScroll, 0, 2);
+
+            selectedPadPalettePanel = new TableLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 8,
+                RowCount = 16,
+                Dock = DockStyle.Top,
+                BackColor = Color.FromArgb(18, 18, 18),
+                Margin = new Padding(0),
+                Padding = new Padding(0),
+                GrowStyle = TableLayoutPanelGrowStyle.FixedSize
+            };
+            for (int c = 0; c < 8; c++)
+                selectedPadPalettePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 33));
+            for (int r = 0; r < 16; r++)
+                selectedPadPalettePanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 31));
+            paletteScroll.Controls.Add(selectedPadPalettePanel);
+
+            foreach ((byte Value, Color Color) item in PadColorPalette)
+            {
+                byte paletteValue = item.Value;
+                Color swatchColour = item.Color;
+
+                Button swatch = new Button
+                {
+                    Text = paletteValue.ToString(),
+                    Dock = DockStyle.Fill,
+                    Margin = new Padding(2),
+                    BackColor = swatchColour,
+                    ForeColor = GetReadableTextColor(swatchColour),
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI", 7, FontStyle.Bold),
+                    UseVisualStyleBackColor = false,
+                    Tag = paletteValue,
+                    AccessibleName = $"Hardware colour {paletteValue}"
+                };
+                swatch.FlatAppearance.BorderColor = Color.FromArgb(120, 120, 120);
+                swatch.Click += PaletteSwatch_Click;
+                selectedPadPalettePanel.Controls.Add(swatch, paletteValue % 8, paletteValue / 8);
+                padButtonToolTip.SetToolTip(swatch, $"Palette value {paletteValue}");
+            }
+        }
+
+        private Label MakeEditorHeading(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                ForeColor = Color.Gainsboro,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
         }
     }
 }

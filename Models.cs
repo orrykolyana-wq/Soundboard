@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Soundboard
 {
@@ -37,5 +38,11 @@ namespace Soundboard
         public string Name { get; set; } = "";
 
         public override string ToString() => Name;
+    }
+
+    internal class AudioSettingsData
+    {
+        public string ActiveMode { get; set; } = "TV";
+        public Dictionary<string, string?> Assignments { get; set; } = new();
     }
 }
